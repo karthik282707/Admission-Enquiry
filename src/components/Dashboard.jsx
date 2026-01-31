@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, Users, Search, Download, CheckCircle, Clock, Eye, Smartphone, GraduationCap, Clipboard, X, Briefcase, MapPin, Calendar, Award, BookOpen } from 'lucide-react';
+import { LogOut, Users, Search, Download, CheckCircle, Clock, Eye, Smartphone, GraduationCap, Clipboard, X, Briefcase, MapPin, Calendar, Award, BookOpen, Calculator } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CounselorChat from './CounselorChat';
 
@@ -8,12 +8,28 @@ const Dashboard = ({ user, onLogout }) => {
     const [admissions, setAdmissions] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedAdmission, setSelectedAdmission] = useState(null);
+    const [statView, setStatView] = useState('districts'); // districts, gender, quota, transport
     const navigate = useNavigate();
 
 
     useEffect(() => {
-        const data = JSON.parse(localStorage.getItem('admissions') || '[]');
-        setAdmissions(data);
+        const loadData = () => {
+            const data = JSON.parse(localStorage.getItem('admissions') || '[]');
+            setAdmissions(data);
+        };
+
+        loadData();
+
+        // Listen for storage changes from other tabs
+        window.addEventListener('storage', loadData);
+
+        // Polling as fallback for same-tab updates
+        const interval = setInterval(loadData, 3000);
+
+        return () => {
+            window.removeEventListener('storage', loadData);
+            clearInterval(interval);
+        };
     }, []);
 
     const filteredData = admissions.filter(item => {
@@ -27,6 +43,7 @@ const Dashboard = ({ user, onLogout }) => {
             (item.phone2 || '').toLowerCase().includes(s) ||
             (item.phone3 || '').toLowerCase().includes(s) ||
             (item.schoolName || '').toLowerCase().includes(s) ||
+            (item.district || '').toLowerCase().includes(s) ||
             (item.aadhaarNo || '').toLowerCase().includes(s)
         );
     });
@@ -73,32 +90,230 @@ const Dashboard = ({ user, onLogout }) => {
                 <CounselorChat user={user} />
             ) : (
                 <>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ background: 'rgba(99, 102, 241, 0.2)', padding: '1rem', borderRadius: '1rem' }}>
-                                <Users color="var(--primary)" />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '1.5rem', marginBottom: '2rem' }}>
+                        {/* Summary Stats */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '4px solid var(--primary)' }}>
+                                <div style={{ background: 'rgba(30, 58, 138, 0.1)', padding: '0.75rem', borderRadius: '0.75rem' }}>
+                                    <Users size={20} color="var(--primary)" />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{admissions.length}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Apps</div>
+                                </div>
                             </div>
-                            <div>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{admissions.length}</div>
-                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Total Applications</div>
+                            <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '4px solid var(--success)' }}>
+                                <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '0.75rem', borderRadius: '0.75rem' }}>
+                                    <CheckCircle size={20} color="var(--success)" />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{admissions.filter(a => a.status === 'Approved').length}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Approved</div>
+                                </div>
+                            </div>
+                            <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '4px solid #f59e0b' }}>
+                                <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '0.75rem', borderRadius: '0.75rem' }}>
+                                    <Clock size={20} color="#f59e0b" />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{admissions.filter(a => a.status === 'Pending').length}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Pending</div>
+                                </div>
+                            </div>
+                            <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: '4px solid #8b5cf6' }}>
+                                <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '0.75rem', borderRadius: '0.75rem' }}>
+                                    <Calculator size={20} color="#8b5cf6" />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+                                        {(() => {
+                                            const scores = admissions.map(a => parseFloat(a.marks12th?.cutoff)).filter(c => !isNaN(c) && c > 0);
+                                            return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : '0.00';
+                                        })()}
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Avg. Cutoff</div>
+                                </div>
                             </div>
                         </div>
-                        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ background: 'rgba(16, 185, 129, 0.2)', padding: '1rem', borderRadius: '1rem' }}>
-                                <CheckCircle color="var(--success)" />
+
+                        {/* Live Feed Analytics */}
+                        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 className="font-outfit" style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{ width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', animation: 'pulse 1.5s infinite' }} />
+                                    Live Admission Analytics
+                                </h3>
+                                <div style={{ display: 'flex', gap: '0.4rem', background: '#f1f5f9', padding: '0.25rem', borderRadius: '0.5rem', flexWrap: 'wrap' }}>
+                                    {['districts', 'gender', 'quota', 'transport', 'cutoff'].map(view => (
+                                        <button
+                                            key={view}
+                                            onClick={() => setStatView(view)}
+                                            style={{
+                                                padding: '0.4rem 0.8rem',
+                                                fontSize: '0.7rem',
+                                                fontWeight: '700',
+                                                border: 'none',
+                                                background: statView === view ? '#fff' : 'transparent',
+                                                borderRadius: '0.4rem',
+                                                cursor: 'pointer',
+                                                boxShadow: statView === view ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                                                color: statView === view ? 'var(--primary)' : 'var(--text-muted)',
+                                                textTransform: 'capitalize'
+                                            }}
+                                        >
+                                            {view}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            <div>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{admissions.filter(a => a.status === 'Approved').length}</div>
-                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Processed</div>
-                            </div>
-                        </div>
-                        <div className="glass-card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ background: 'rgba(245, 158, 11, 0.2)', padding: '1rem', borderRadius: '1rem' }}>
-                                <Clock color="#f59e0b" />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{admissions.filter(a => a.status === 'Pending').length}</div>
-                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Pending Review</div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+                                {statView === 'districts' && (
+                                    Object.entries(admissions.reduce((acc, a) => {
+                                        const d = a.district || 'Other';
+                                        acc[d] = (acc[d] || 0) + 1;
+                                        return acc;
+                                    }, {}))
+                                        .sort((a, b) => b[1] - a[1])
+                                        .map(([name, count]) => (
+                                            <div key={name} style={{
+                                                background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)',
+                                                padding: '1.25rem',
+                                                borderRadius: '1.25rem',
+                                                textAlign: 'center',
+                                                border: '1px solid #e2e8f0',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '0.25rem',
+                                                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+                                            }}>
+                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{name}</div>
+                                                <div style={{ fontSize: '1.75rem', fontWeight: '900', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                                                    <MapPin size={16} style={{ opacity: 0.5 }} />
+                                                    {count}
+                                                </div>
+                                            </div>
+                                        ))
+                                )}
+                                {statView === 'gender' && (
+                                    <>
+                                        <div style={{
+                                            background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
+                                            padding: '1.5rem',
+                                            borderRadius: '1.5rem',
+                                            textAlign: 'center',
+                                            border: '1px solid #7dd3fc',
+                                            boxShadow: '0 10px 15px -3px rgba(14, 165, 233, 0.1)'
+                                        }}>
+                                            <div style={{ fontSize: '0.8rem', color: '#0369a1', fontWeight: '800', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>MALE</div>
+                                            <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0c4a6e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                                <Users size={24} />
+                                                {admissions.filter(a => (a.gender || '').toUpperCase() === 'MALE').length}
+                                            </div>
+                                        </div>
+                                        <div style={{
+                                            background: 'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)',
+                                            padding: '1.5rem',
+                                            borderRadius: '1.5rem',
+                                            textAlign: 'center',
+                                            border: '1px solid #f9a8d4',
+                                            boxShadow: '0 10px 15px -3px rgba(219, 39, 119, 0.1)'
+                                        }}>
+                                            <div style={{ fontSize: '0.8rem', color: '#9d174d', fontWeight: '800', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>FEMALE</div>
+                                            <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#700d2f', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                                <Users size={24} />
+                                                {admissions.filter(a => (a.gender || '').toUpperCase() === 'FEMALE').length}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                {statView === 'quota' && (
+                                    <>
+                                        <div style={{
+                                            background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
+                                            padding: '1.5rem',
+                                            borderRadius: '1.5rem',
+                                            textAlign: 'center',
+                                            border: '1px solid #86efac',
+                                            boxShadow: '0 10px 15px -3px rgba(34, 197, 94, 0.1)'
+                                        }}>
+                                            <div style={{ fontSize: '0.8rem', color: '#166534', fontWeight: '800', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>GOVERNMENT</div>
+                                            <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#064e3b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                                <Award size={24} />
+                                                {admissions.filter(a => (a.quota || '').toUpperCase() === 'GOVERNMENT').length}
+                                            </div>
+                                        </div>
+                                        <div style={{
+                                            background: 'linear-gradient(135deg, #fef9c3 0%, #fef08a 100%)',
+                                            padding: '1.5rem',
+                                            borderRadius: '1.5rem',
+                                            textAlign: 'center',
+                                            border: '1px solid #fde047',
+                                            boxShadow: '0 10px 15px -3px rgba(234, 179, 8, 0.1)'
+                                        }}>
+                                            <div style={{ fontSize: '0.8rem', color: '#854d0e', fontWeight: '800', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>MANAGEMENT</div>
+                                            <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#713f12', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                                <Briefcase size={24} />
+                                                {admissions.filter(a => (a.quota || '').toUpperCase() === 'MANAGEMENT').length}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                {statView === 'transport' && (
+                                    <>
+                                        <div style={{
+                                            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                                            padding: '1.5rem',
+                                            borderRadius: '1.5rem',
+                                            textAlign: 'center',
+                                            border: '1px solid #bfdbfe',
+                                            boxShadow: '0 10px 15px -3px rgba(59, 130, 246, 0.1)'
+                                        }}>
+                                            <div style={{ fontSize: '0.8rem', color: '#1e40af', fontWeight: '800', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>BUS TRANSPORT</div>
+                                            <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#1e3a8a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                                <Smartphone size={24} />
+                                                {admissions.filter(a => (a.bus || '').toUpperCase() === 'YES').length}
+                                            </div>
+                                        </div>
+                                        <div style={{
+                                            background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+                                            padding: '1.5rem',
+                                            borderRadius: '1.5rem',
+                                            textAlign: 'center',
+                                            border: '1px solid #ddd6fe',
+                                            boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.1)'
+                                        }}>
+                                            <div style={{ fontSize: '0.8rem', color: '#5b21b6', fontWeight: '800', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>HOSTELLER</div>
+                                            <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#4c1d95', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                                <GraduationCap size={24} />
+                                                {admissions.filter(a => (a.hostel || '').toUpperCase() === 'YES').length}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                {statView === 'cutoff' && (
+                                    <div style={{
+                                        gridColumn: 'span 2',
+                                        background: 'linear-gradient(135deg, #f5f3ff 0%, #ddd6fe 100%)',
+                                        padding: '2rem',
+                                        borderRadius: '1.5rem',
+                                        textAlign: 'center',
+                                        border: '1px solid #c4b5fd',
+                                        boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.1)'
+                                    }}>
+                                        <div style={{ fontSize: '0.9rem', color: '#5b21b6', fontWeight: '800', marginBottom: '1rem', letterSpacing: '0.1em' }}>AGGREGATE CUTOFF AVERAGE (12TH)</div>
+                                        <div style={{ fontSize: '4rem', fontWeight: '950', color: '#2e1065', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+                                            <Calculator size={48} style={{ opacity: 0.3 }} />
+                                            {(() => {
+                                                const scores = admissions.map(a => parseFloat(a.marks12th?.cutoff)).filter(c => !isNaN(c) && c > 0);
+                                                return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : '0.00';
+                                            })()}
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', color: '#6d28d9', marginTop: '0.5rem', fontWeight: '600' }}>
+                                            Based on {admissions.map(a => parseFloat(a.marks12th?.cutoff)).filter(c => !isNaN(c) && c > 0).length} valid submissions
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
