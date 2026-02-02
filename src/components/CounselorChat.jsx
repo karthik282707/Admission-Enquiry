@@ -3,7 +3,7 @@ import { Send, User, Bot, History, Search, Info } from 'lucide-react';
 
 const CounselorChat = ({ user }) => {
     const [messages, setMessages] = useState([
-        { id: 1, text: "Hello! I'm your Counsel Assistant. You can look up a student by typing their application number (e.g., '123' or 'Lookup 123').", sender: 'bot', timestamp: new Date() }
+        { id: 1, text: "Hello! I'm your Student Search Assistant. You can look up a student by typing their application number (e.g., '123' or 'Lookup 123').", sender: 'bot', timestamp: new Date() }
     ]);
     const [inputValue, setInputValue] = useState('');
     const [admissions, setAdmissions] = useState([]);
@@ -132,15 +132,15 @@ const CounselorChat = ({ user }) => {
     };
 
     return (
-        <div className="container animate-fade-in" style={{ height: 'calc(100vh - 4rem)', display: 'flex', flexDirection: 'column' }}>
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '1rem', overflow: 'hidden', marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1rem' }}>
                     <div style={{ background: 'var(--primary)', color: '#fff', padding: '0.5rem', borderRadius: '0.75rem' }}>
                         <Bot size={24} />
                     </div>
                     <div>
-                        <h2 className="font-outfit" style={{ fontSize: '1.25rem', margin: 0 }}>Counsel Assistant</h2>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>AI-Powered Student Support</p>
+                        <h2 className="font-outfit" style={{ fontSize: '1.25rem', margin: 0 }}>Search Student Details</h2>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Retrieve and Manage Admissions</p>
                     </div>
                 </div>
 
@@ -178,7 +178,7 @@ const CounselorChat = ({ user }) => {
                     <input
                         type="text"
                         className="input-field"
-                        placeholder="Type app number or a comment..."
+                        placeholder="Search student (Name or App Number)..."
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         style={{ flex: 1, margin: 0 }}
