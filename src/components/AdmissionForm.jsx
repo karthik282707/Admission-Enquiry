@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, LogOut, FileText, ClipboardList, GraduationCap, School, Calculator, CreditCard, Search, X, ChevronDown } from 'lucide-react';
 
-import SCHOOL_LIST from '../data/schools.json';
-
+// import SCHOOL_LIST from '../data/schools.json'; // Removed static list
 
 const AdmissionForm = ({ user, onLogout, isSimplified }) => {
     const [formData, setFormData] = useState({
@@ -45,20 +44,52 @@ const AdmissionForm = ({ user, onLogout, isSimplified }) => {
     const [schoolSearchQuery, setSchoolSearchQuery] = useState('');
     const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
+    const [dbSchools, setDbSchools] = useState([]);
     const dropdownRef = useRef(null);
+
+    // Fetch school blocks from API
+    useEffect(() => {
+        const fetchSchools = async () => {
+            try {
+                const res = await fetch('http://localhost:5000/api/school-blocks');
+                if (res.ok) {
+                    const data = await res.json();
+                    setDbSchools(data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch schools", err);
+            }
+        };
+        fetchSchools();
+    }, []);
 
     const filteredSchools = schoolSearchQuery.trim() === ''
         ? []
-        : SCHOOL_LIST.filter(school =>
-            school.toLowerCase().includes(schoolSearchQuery.toLowerCase())
-        ).sort((a, b) => {
+        : dbSchools.filter(school => {
+            const nameMatch = school.school_name && school.school_name.toLowerCase().includes(schoolSearchQuery.toLowerCase());
+            // Optional: You could also search by district if you wanted
+            return nameMatch;
+        }).sort((a, b) => {
+            // 1. Sort by District match if district is entered
+            if (formData.district) {
+                const aInDistrict = a.district.toLowerCase() === formData.district.toLowerCase();
+                const bInDistrict = b.district.toLowerCase() === formData.district.toLowerCase();
+                if (aInDistrict && !bInDistrict) return -1;
+                if (!aInDistrict && bInDistrict) return 1;
+            }
+
+            // 2. Sort by query match position
             const query = schoolSearchQuery.toLowerCase();
-            const aStarts = a.toLowerCase().startsWith(query);
-            const bStarts = b.toLowerCase().startsWith(query);
+            const aName = a.school_name.toLowerCase();
+            const bName = b.school_name.toLowerCase();
+            const aStarts = aName.startsWith(query);
+            const bStarts = bName.startsWith(query);
+
             if (aStarts && !bStarts) return -1;
             if (!aStarts && bStarts) return 1;
-            return a.localeCompare(b);
-        }).slice(0, 15);
+            return aName.localeCompare(bName);
+        }).slice(0, 15)
+            .map(s => `${s.school_name} - ${s.address || s.district}`); // Format: School Name - Address/District
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -98,24 +129,40 @@ const AdmissionForm = ({ user, onLogout, isSimplified }) => {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         const year = new Date().getFullYear();
         const random = Math.floor(1000 + Math.random() * 9000);
         const appNo = `APP-${year}-${random}`;
 
-        const existingData = JSON.parse(localStorage.getItem('admissions') || '[]');
         const newData = {
             ...formData,
-            id: Date.now(),
             appNumber: appNo,
             studentUsername: user.username,
             status: 'Pending'
         };
 
-        localStorage.setItem('admissions', JSON.stringify([...existingData, newData]));
-        setSubmittedAppNumber(appNo);
-        // alert('Form submitted successfully! Your Application Number is: ' + appNo);
+        try {
+            const response = await fetch('http://localhost:5000/api/enquiries', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newData),
+            });
+
+            if (response.ok) {
+                setSubmittedAppNumber(appNo);
+                // Also keep localStorage as a backup or for other components if needed, optional
+                const existingData = JSON.parse(localStorage.getItem('admissions') || '[]');
+                localStorage.setItem('admissions', JSON.stringify([...existingData, { ...newData, id: Date.now() }]));
+            } else {
+                alert('Failed to submit application. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            alert('Server error. Please check if the backend is running.');
+        }
     };
 
     if (submittedAppNumber) {

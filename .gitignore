@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Database files
+*.db
+*.db-journal
+
+# Excel and PDF files (large)
+*.xlsx
+*.pdf
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# User-specific directories
+karthikeyan/
+server/karthikeyan/
+
+# Logs
+*.log
+npm-debug.log*
